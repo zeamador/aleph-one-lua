@@ -26,11 +26,11 @@
 -- - s(): save the game
 -- - k(): kill yourself so you can restart from a save quickly
 -- - l(number): set life to <number>. 150 is 1X, 300 is 2X, and 450 is 3X.
+--       Maximum possible life is 32767.
+-- - life(): increase your life to the next full bar
 -- - o(number): set oxygen to <number>, from 0 to 10800
--- - i(): set yourself to be invincible for a long time (note that k() will
---       still kill you, as will fusion bolts)
--- - l(): increase your life to the next full bar
 -- - o2(): recharge oxygen to full
+-- - i(): toggle true invulnerability (note that k() will still kill you)
 -- - bye(): get an invisibility item
 -- - inv(): get an invincibility item
 -- - wow(): get an extravision item
@@ -46,66 +46,195 @@
 -- - stuff(): get everything: full 3X health, all weapons, and ammo
 
 Triggers = {}
+invulnerable = false
+
+-- Helper functions --
 
 function s()
-  Game.save()
+	Game.save()
 end
 
 function k()
-  Players[0]:damage(1000, "fusion")
+	invulnerable = false
+	for p in Players() do
+		p:damage(p.life+1, "fusion")
+	end
 end
 
 function l(num)
-  Players[0].life = num
+	-- Setting life has a cap, but negative damage does not!
+	for p in Players() do
+		p:damage(-num + p.life, "fusion")
+	end
+end
+
+function life()
+   if Players[0].life < 150 then 
+      Players[0].life = 150
+   elseif Players[0].life < 300 then
+      Players[0].life = 300
+   elseif Players[0].life < 450 then
+      Players[0].life = 450
+   end
 end
 
 function o(num)
-   Players[0].oxygen = num
+	Players[0].oxygen = num
+end
+
+function o2()
+   Players[0].oxygen = 10800
 end
 
 function i()
-  Players[0].invincibility_duration = 32000
-end
-
-function Triggers.idle()
-  for p in Players() do
-    if Players[0]._this_start ~= 0 and Game.ticks - Players[0]._this_start < 3*30 then
-      p.overlays[0].text = game_time_str(Players[0]._this_start - Players[0]._last_start)
-      p.overlays[0].color = "yellow"
-    else
-      p.overlays[0].text = game_time_str(Game.ticks)
-      p.overlays[0].color = "white"
-    end
-	--p.overlays[1].text = level_info()
-	if p.weapons.current ~= nil then
-	  p.overlays[1].text = string.format("%d %d", p.weapons.current.primary.rounds, p.weapons.current.secondary.rounds)
+  invulnerable = not invulnerable
+  if invulnerable then
+	Players.print("Invulnerability on")
+	for p in Players() do
+	  p._last_life = p.life
 	end
-    p.overlays[2].text = string.format("%.1f %.1f %.1f", p.external_velocity.x, p.external_velocity.y, p.external_velocity.z)
-    if p.dead then
-      p.overlays[3].text = "RIP"
-    else
-      p.overlays[3].text = string.format("%03d", p.life).."HP"
-    end
-    --p.overlays[3].color = life_color(p.life)
-    local completion = Level.calculate_completion_state()
-    p.overlays[4].text = completion_str(completion)
-    p.overlays[4].color = completion_color(completion)
-    p.overlays[3].text = monster_count()
-  end
-end
-
-function monster_count()
-  count = 0
-  active = 0
-  for m in Monsters() do
-    if not m.player and m.type.enemies["player"] == true then
-	  count = count + 1
-	  if m.active then
-	    active = active + 1
+  else
+	Players.print("Invulnerability off")
+	for p in Players() do
+	  p.life = p._last_life
+	  if p._last_life > 450 then
+		p:damage(-p._last_life + 450)
 	  end
 	end
   end
-  return string.format("%d(%d)", count, active)
+end
+
+function bye()
+   Players[0].items["invisibility"] = 1
+end
+
+function inv()
+   Players[0].items["invincibility"] = 1
+end
+
+function wow()
+   Players[0].items["extravision"] = 1
+end
+
+function mag()
+   local items = Players[0].items
+   items["pistol"] = items["pistol"] + 1
+   items["pistol ammo"] = items["pistol ammo"] + 10
+end
+
+function ar()
+   local items = Players[0].items
+   items["assault rifle"] = items["assault rifle"] + 1
+   items["assault rifle ammo"] = items["assault rifle ammo"] + 10
+   items["assault rifle grenades"] = items["assault rifle grenades"] + 10
+end
+
+function spnkr()
+   local items = Players[0].items
+   items["missile launcher"] = items["missile launcher"] + 1
+   items["missile launcher ammo"] = items["missile launcher ammo"] + 10
+end
+
+function tozt()
+   local items = Players[0].items
+   items["flamethrower"] = items["flamethrower"] + 1
+   items["flamethrower ammo"] = items["flamethrower ammo"] + 10
+end
+
+function zeus()
+   local items = Players[0].items
+   items["fusion pistol"] = items["fusion pistol"] + 1
+   items["fusion pistol ammo"] = items["fusion pistol ammo"] + 10
+end
+
+function wste()
+   local items = Players[0].items
+   items["shotgun"] = items["shotgun"] + 1
+   items["shotgun ammo"] = items["shotgun ammo"] + 10
+end
+
+function smg()
+   local items = Players[0].items
+   items["smg"] = items["smg"] + 1
+   items["smg ammo"] = items["smg ammo"] + 10
+end
+
+function alien()
+   local items = Players[0].items
+   items["alien weapon"] = items["alien weapon"] + 1
+end
+
+function ammo()
+   local items = { "pistol ammo", "fusion pistol ammo", "assault rifle ammo", "assault rifle grenades", "missile launcher ammo", "alien weapon ammo", "flamethrower ammo", "shotgun ammo", "smg ammo" }
+   for _, item in pairs(items) do
+      Players[0].items[item] = Players[0].items[item] + 10
+   end
+end
+
+function stuff()
+   ammo()
+   local weapons = { "alien weapon", "pistol", "fusion pistol", "assault rifle", "missile launcher", "flamethrower", "shotgun", "shotgun", "smg" }
+   for _, weapon in pairs(weapons) do
+      Players[0].items[weapon] = Players[0].items[weapon] + 1
+   end
+
+   if Players[0].life < 450 then 
+      Players[0].life = 450
+   end
+end
+
+-- Triggers --
+
+function Triggers.idle()
+	for p in Players() do
+		-- Overlay 1: game time
+		if Players[0]._this_start ~= 0 and Game.ticks - Players[0]._this_start < 3*30 then
+			p.overlays[0].text = game_time_str(Players[0]._this_start - Players[0]._last_start)
+			p.overlays[0].color = "yellow"
+		else
+			p.overlays[0].text = game_time_str(Game.ticks)
+			p.overlays[0].color = "white"
+		end
+
+		-- Overlay 2
+		--p.overlays[1].text = level_info()
+		if p.weapons.current ~= nil then
+			p.overlays[1].text = string.format("%d %d",
+				p.weapons.current.primary.rounds,
+				p.weapons.current.secondary.rounds)
+		end
+
+		-- Overlay 3
+		p.overlays[2].text = string.format("%.1f %.1f %.1f", p.external_velocity.x, p.external_velocity.y, p.external_velocity.z)
+
+		-- Overlay 4
+		if p.dead then
+			p.overlays[3].text = "RIP"
+		else
+			p.overlays[3].text = string.format("%03d", p.life).."HP"
+		end
+
+		-- Overlay 5
+		--p.overlays[3].color = life_color(p.life)
+		local completion = Level.calculate_completion_state()
+		p.overlays[4].text = completion_str(completion)
+		p.overlays[4].color = completion_color(completion)
+
+		-- Overlay 6
+		p.overlays[5].text = monster_count()
+	end
+end
+
+function Triggers.postidle()
+	if invulnerable then
+		for p in Players() do
+			if p.life ~= 300 then
+				p.life = 300
+			else
+				p.life = 450
+			end
+		end
+	end
 end
 
 function Triggers.tag_switch(tag, player, side)
@@ -142,6 +271,9 @@ end
 
 function Triggers.player_damaged(victim, aggressor_player, aggressor_monster, damage_type, damage_amount, projectile)
   Players.print(victim.name.." -"..damage_amount)
+  if invulnerable then
+    victim.life = victim.life + damage_amount
+  end
 end
 
 function Triggers.init()
@@ -158,6 +290,22 @@ end
 -- so we can restore it at the start of the next one.
 function Triggers.cleanup()
   Players[0]._last_start = Players[0]._this_start
+end
+
+-- Helper functions --
+
+function monster_count()
+  count = 0
+  active = 0
+  for m in Monsters() do
+    if not m.player and m.type.enemies["player"] == true then
+	  count = count + 1
+	  if m.active then
+	    active = active + 1
+	  end
+	end
+  end
+  return string.format("%d(%d)", count, active)
 end
 
 function int_speed(vel)
@@ -253,95 +401,3 @@ function game_time_str(ticks)
   end
 end
 
-function l()
-   if Players[0].life < 150 then 
-      Players[0].life = 150
-   elseif Players[0].life < 300 then
-      Players[0].life = 300
-   elseif Players[0].life < 450 then
-      Players[0].life = 450
-   end
-end
-
-function o2()
-   Players[0].oxygen = 10800
-end
-
-function bye()
-   Players[0].items["invisibility"] = 1
-end
-
-function inv()
-   Players[0].items["invincibility"] = 1
-end
-
-function wow()
-   Players[0].items["extravision"] = 1
-end
-
-function mag()
-   local items = Players[0].items
-   items["pistol"] = items["pistol"] + 1
-   items["pistol ammo"] = items["pistol ammo"] + 10
-end
-
-function ar()
-   local items = Players[0].items
-   items["assault rifle"] = items["assault rifle"] + 1
-   items["assault rifle ammo"] = items["assault rifle ammo"] + 10
-   items["assault rifle grenades"] = items["assault rifle grenades"] + 10
-end
-
-function spnkr()
-   local items = Players[0].items
-   items["missile launcher"] = items["missile launcher"] + 1
-   items["missile launcher ammo"] = items["missile launcher ammo"] + 10
-end
-
-function tozt()
-   local items = Players[0].items
-   items["flamethrower"] = items["flamethrower"] + 1
-   items["flamethrower ammo"] = items["flamethrower ammo"] + 10
-end
-
-function zeus()
-   local items = Players[0].items
-   items["fusion pistol"] = items["fusion pistol"] + 1
-   items["fusion pistol ammo"] = items["fusion pistol ammo"] + 10
-end
-
-function wste()
-   local items = Players[0].items
-   items["shotgun"] = items["shotgun"] + 1
-   items["shotgun ammo"] = items["shotgun ammo"] + 10
-end
-
-function smg()
-   local items = Players[0].items
-   items["smg"] = items["smg"] + 1
-   items["smg ammo"] = items["smg ammo"] + 10
-end
-
-function alien()
-   local items = Players[0].items
-   items["alien weapon"] = items["alien weapon"] + 1
-end
-
-function ammo()
-   local items = { "pistol ammo", "fusion pistol ammo", "assault rifle ammo", "assault rifle grenades", "missile launcher ammo", "alien weapon ammo", "flamethrower ammo", "shotgun ammo", "smg ammo" }
-   for _, item in pairs(items) do
-      Players[0].items[item] = Players[0].items[item] + 10
-   end
-end
-
-function stuff()
-   ammo()
-   local weapons = { "alien weapon", "pistol", "fusion pistol", "assault rifle", "missile launcher", "flamethrower", "shotgun", "shotgun", "smg" }
-   for _, weapon in pairs(weapons) do
-      Players[0].items[weapon] = Players[0].items[weapon] + 1
-   end
-
-   if Players[0].life < 450 then 
-      Players[0].life = 450
-   end
-end
