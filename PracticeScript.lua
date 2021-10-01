@@ -57,7 +57,7 @@ end
 function k()
 	invulnerable = false
 	for p in Players() do
-		p:damage(p.life+1, "fusion")
+		p:damage(2*p.life+1, "fusion")
 	end
 end
 
