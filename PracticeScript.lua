@@ -186,6 +186,10 @@ end
 -- Triggers --
 
 function Triggers.idle()
+	if Game.ticks == 0 then
+		Players.print("Practice Script v1.1")
+	end
+
 	for p in Players() do
 		-- Overlay 1: game time
 		if Players[0]._this_start ~= 0 and Game.ticks - Players[0]._this_start < 3*30 then
@@ -197,12 +201,12 @@ function Triggers.idle()
 		end
 
 		-- Overlay 2
-		--p.overlays[1].text = level_info()
-		if p.weapons.current ~= nil then
-			p.overlays[1].text = string.format("%d %d",
-				p.weapons.current.primary.rounds,
-				p.weapons.current.secondary.rounds)
-		end
+		p.overlays[1].text = level_info()
+		--if p.weapons.current ~= nil then
+		--	p.overlays[1].text = string.format("%d %d",
+		--		p.weapons.current.primary.rounds,
+		--		p.weapons.current.secondary.rounds)
+		--end
 
 		-- Overlay 3
 		p.overlays[2].text = string.format("%.1f %.1f %.1f", p.external_velocity.x, p.external_velocity.y, p.external_velocity.z)
@@ -213,15 +217,28 @@ function Triggers.idle()
 		else
 			p.overlays[3].text = string.format("%03d", p.life).."HP"
 		end
-
+		p.overlays[3].color = life_color(p.life)
+    
 		-- Overlay 5
-		--p.overlays[3].color = life_color(p.life)
 		local completion = Level.calculate_completion_state()
 		p.overlays[4].text = completion_str(completion)
 		p.overlays[4].color = completion_color(completion)
 
 		-- Overlay 6
 		p.overlays[5].text = monster_count()
+		
+		-- handle jumping (stolen from Cheats.lua)
+		if p.action_flags.microphone_button then
+			if not p._latched then
+				p._latched = true
+				p:accelerate(0, 0, 0.1)
+			end
+			p.action_flags.microphone_button = false
+		else
+			p._latched = false
+		end
+    
+    p._last_oxygen = p.oxygen
 	end
 end
 
@@ -284,6 +301,7 @@ function Triggers.init()
     Game.save()
   end
   Players[0]._this_start = Game.ticks
+  Players[0]._last_oxygen = Players[0].oxygen
 end
 
 -- Save the time of the start of this level
