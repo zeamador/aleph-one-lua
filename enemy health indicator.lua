@@ -15,7 +15,7 @@ end
 function Triggers.idle()
   for m in Monsters() do
     if m.visible and not m.player then
-      local theta = angle_between_points(
+      local theta = math.pi - angle_between_points(
         {x = m.x, y = m.y},
         {x = Players[0].x, y = Players[0].y}
       )
@@ -52,7 +52,7 @@ function Triggers.idle()
           -- relocate label
           local h = MonsterTypes[m.type.mnemonic].height + OFFSET
           for i = 1, m._labellen do
-            m._label[i]:position(m.x - (i-m._labellen/2)*x_offset, m.y - (i-m._labellen/2)*y_offset, m.z + h, m.polygon)
+            m._label[i]:position(m.x + (i-m._labellen/2)*x_offset, m.y + (i-m._labellen/2)*y_offset, m.z + h, m.polygon)
             m._label[i].facing = m.facing
           end
         end
