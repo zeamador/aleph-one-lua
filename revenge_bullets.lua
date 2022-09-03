@@ -1,5 +1,5 @@
 -- revenge_bullets.lua
--- by aperturegrillz, 2021-08-15
+-- by aperturegrillz
 -- Causes dying enemies to emit projectiles corresponding to their type.
 
 Triggers = {}
@@ -15,16 +15,16 @@ function Triggers.monster_killed(m, aggressor_player, projectile)
 	if t ~= nil then
 		local n = PROJECTILE_COUNT
 		for i = 0, n, 1 do
-			local zjitter = Z_JITTER/2 + math.random()*Z_JITTER
+			local zjitter = Z_JITTER/2 + (Game.random(256)/256)*Z_JITTER
 			local p = Projectiles.new(m.x, m.y, m.z+zjitter, m.polygon, t)
 			p.target = aggressor_player
-			local pitchjitter = math.random()*PITCH_JITTER - PITCH_JITTER/2
+			local pitchjitter = (Game.random(256)/256)*PITCH_JITTER - PITCH_JITTER/2
 			-- make ballistics bias upwards
 			if t == "trooper grenade" then
 				pitchjitter = pitchjitter + 3
 			end
 			p.elevation = pitchjitter
-			local yawjitter = math.random()*YAW_JITTER - YAW_JITTER/2
+			local yawjitter = (Game.random(256)/256)*YAW_JITTER - YAW_JITTER/2
 			p.facing = m.facing + yawjitter
 		end
 	end
