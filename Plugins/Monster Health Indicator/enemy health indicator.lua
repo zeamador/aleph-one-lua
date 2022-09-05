@@ -1,21 +1,25 @@
--- play_ghost.lua
+-- enemy health indicator.lua
 -- by aperturegrillz
+
+-- To be used in conjunction with a shapes patch.
+-- Displays floating health numbers above monsters.
+-- Displays floating damage numbers when monsters are hurt.
 
 Triggers = {}
 
-OFFSET = 0.1
-DIGIT_SPACE = 0.07
-DIGIT_FORWARD = 0.1
-DMG_FORWARD = 0.15
-COLLECTION = 7
-SEQ_IDX = 34
-RED_SEQ_IDX = 44
-DMG_OFFSET = 0.2
-DMG_DELAY = 15
-RAISE_PER_TICK = 0.01
-CEILING_BUFFER = 0.1
+OFFSET = 0.1 -- Distance above monster's height to place health label
+DIGIT_SPACE = 0.07 -- Space between digits
+DIGIT_FORWARD = 0.1 -- Amount to put digits in front of monster
+DMG_FORWARD = 0.15 -- Amount to put damage digits in front of monster
+COLLECTION = 7 -- Collection for numeral sprites
+SEQ_IDX = 34 -- Sequence start for green numerals
+RED_SEQ_IDX = 44 -- Sequence start for red numerals
+DMG_OFFSET = 0.2 -- Distance above monster's height to start damage label
+DMG_DELAY = 15 -- Number of ticks to keep damage label alive
+RAISE_PER_TICK = 0.01 -- Distance by which a damage label will rise per tick
+CEILING_BUFFER = 0.1 -- Distance below the ceiling to restrict labels to
 
-PUNCH_THRESHOLD = 50
+PUNCH_THRESHOLD = 50 -- Minimum punch damage at which to play extra noise
 
 hit_labels = {}
 
@@ -80,30 +84,7 @@ function Triggers.idle()
             m._label[i].facing = m.facing
           end
         end
-        --if m._hits ~= nil then
-        --  local h = MonsterTypes[m.type.mnemonic].height + DMG_OFFSET
-        --  for hit = 1, m._numhits do
-        --    for i = 1, m._hits[hit].labellen do
-        --      -- update hit position
-        --      m._hits[hit].label[i]:position(
-        --        m.x + (i-1-m._hits[hit].labellen/2)*x_offset,
-        --        m.y + (i-1-m._hits[hit].labellen/2)*y_offset,
-        --        m.z + h + (Game.ticks - m._hits[hit].tick)*RAISE_PER_TICK,
-        --        m.polygon
-        --      )
-        --      m._label[i].facing = m.facing
-        --    end
-        --    
-        --    if Game.ticks - m._hits[hit].tick > DMG_DELAY then
-        --      for i = 1, m._hits[hit].labellen do
-        --        m._hits[hit].label[i]:delete()
-        --      end
-        --      table.remove(m._hits, hit)
-        --      hit = hit - 1
-        --      m._numhits = m._numhits - 1
-        --    end
-        --  end
-        --end
+        
       else -- m.life < 0
         if m._label ~= nil then
           for i = 1, m._labellen do
@@ -111,14 +92,6 @@ function Triggers.idle()
           end
           m._labellen = 0
         end
-        --if m._numhits ~= nil and m._numhits > 0 then
-        --  for hit = 1, m._numhits do
-        --    for i = 1, m._hits[hit].labellen do
-        --      m._hits[hit].label[i]:delete()
-        --    end
-        --  end
-        --  m._numhits = 0
-        --end
       end
       
       for idx, hit in ipairs(hit_labels) do
@@ -180,6 +153,10 @@ function Triggers.idle()
   end
 end
 
+function Triggers.postidle()
+  
+end
+
 function Triggers.monster_damaged(monster, aggressor_monster, damage_type, damage_amount, projectile)
   local dmg_str = string.format("%d", damage_amount)
   local dmg_label = {}
@@ -200,6 +177,7 @@ function Triggers.monster_damaged(monster, aggressor_monster, damage_type, damag
     tick = Game.ticks
   })
 end
+
 
 ---- The following functions taken from
 ---- https://gist.github.com/kirubz/fa84375008d376a2d695618e0ae3aed8/9812f1407136ca1ef795d484162d05ad2c7eb2b8
