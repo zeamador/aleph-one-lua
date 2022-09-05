@@ -18,6 +18,7 @@ DMG_OFFSET = 0.2 -- Distance above monster's height to start damage label
 DMG_DELAY = 15 -- Number of ticks to keep damage label alive
 RAISE_PER_TICK = 0.01 -- Distance by which a damage label will rise per tick
 CEILING_BUFFER = 0.1 -- Distance below the ceiling to restrict labels to
+DISTANCE_THRESHOLD = 10 -- Maximum draw distance for labels
 
 PUNCH_THRESHOLD = 50 -- Minimum punch damage at which to play extra noise
 
@@ -28,10 +29,19 @@ function Triggers.init()
   table.setn(hit_labels, 0)
 end
 
+function dist(a, b)
+  return math.sqrt( (a.x-b.x)^2 + (a.y-b.y)^2 )
+end
+
 function Triggers.idle()
   for m in Monsters() do
-    if not m.player then    
+    if not m.player and m.life > 0 then
       if m.life > 0 then
+        --local distance = dist(Players[0], m)
+        --if distance < DISTANCE_THRESHOLD
+        --  
+        --end
+        
         local theta = math.pi - angle_between_points(
           {x = m.x, y = m.y},
           {x = Players[0].x, y = Players[0].y}
@@ -84,7 +94,6 @@ function Triggers.idle()
             m._label[i].facing = m.facing
           end
         end
-        
       else -- m.life < 0
         if m._label ~= nil then
           for i = 1, m._labellen do
@@ -93,68 +102,63 @@ function Triggers.idle()
           m._labellen = 0
         end
       end
+    end
+  end
+  for idx, hit in ipairs(hit_labels) do
+    local label_len = #hit.label
+    if label_len > 0 then
+      local hit_loc = {
+        x = hit.label[1].x,
+        y = hit.label[1].y,
+        z = hit.label[1].z,
+        polygon = hit.label[1].polygon
+      }
       
-      for idx, hit in ipairs(hit_labels) do
-        local label_len = #hit.label
-        if label_len > 0 then
-          local hit_loc = {
-            x = hit.label[1].x,
-            y = hit.label[1].y,
-            z = hit.label[1].z,
-            polygon = hit.label[1].polygon
-          }
-          
-          if hit.monster ~= nil then
-            -- update hit position
-            local m = hit.monster
-            local h = MonsterTypes[m.type.mnemonic].height
-            
-            hit_loc.x = m.x
-            hit_loc.y = m.y
-            hit_loc.z = m.z + h + DMG_OFFSET
-            hit_loc.polygon = m.polygon
-            
-            if hit.monster.life < 0 then
-              hit.monster = nil
-            end
-          end
-          
-          local theta = math.pi - angle_between_points(
-            {x = hit_loc.x, y = hit_loc.y},
-            {x = Players[0].x, y = Players[0].y}
-          )
-          local x_offset = DIGIT_SPACE * math.sin(theta)
-          local x_forward = DMG_FORWARD * math.sin(theta - math.pi/2)
-          local y_offset = DIGIT_SPACE * math.cos(theta)
-          local y_forward = DMG_FORWARD * math.cos(theta - math.pi/2)
-          
-          local z = hit_loc.z + (Game.ticks - hit.tick)*RAISE_PER_TICK
-          if z > hit_loc.polygon.ceiling.z - CEILING_BUFFER then
-            z = hit_loc.polygon.ceiling.z - CEILING_BUFFER
-          end
-          for i = 1, label_len do
-            hit.label[i]:position(
-              hit_loc.x + (i-1-label_len/2)*x_offset + x_forward,
-              hit_loc.y + (i-1-label_len/2)*y_offset + y_forward,
-              z,
-              hit_loc.polygon
-            )
-          end
-          
-          if Game.ticks - hit.tick > DMG_DELAY then
-            for i = 1, label_len do
-              hit.label[i]:delete()
-            end
-            table.remove(hit_labels, idx)
-          end
+      if hit.monster ~= nil then
+        -- update hit position
+        local m = hit.monster
+        local h = MonsterTypes[m.type.mnemonic].height
+        
+        hit_loc.x = m.x
+        hit_loc.y = m.y
+        hit_loc.z = m.z + h + DMG_OFFSET
+        hit_loc.polygon = m.polygon
+        
+        if hit.monster.life < 0 then
+          hit.monster = nil
         end
+      end
+      
+      local theta = math.pi - angle_between_points(
+        {x = hit_loc.x, y = hit_loc.y},
+        {x = Players[0].x, y = Players[0].y}
+      )
+      local x_offset = DIGIT_SPACE * math.sin(theta)
+      local x_forward = DMG_FORWARD * math.sin(theta - math.pi/2)
+      local y_offset = DIGIT_SPACE * math.cos(theta)
+      local y_forward = DMG_FORWARD * math.cos(theta - math.pi/2)
+      
+      local z = hit_loc.z + (Game.ticks - hit.tick)*RAISE_PER_TICK
+      if z > hit_loc.polygon.ceiling.z - CEILING_BUFFER then
+        z = hit_loc.polygon.ceiling.z - CEILING_BUFFER
+      end
+      for i = 1, label_len do
+        hit.label[i]:position(
+          hit_loc.x + (i-1-label_len/2)*x_offset + x_forward,
+          hit_loc.y + (i-1-label_len/2)*y_offset + y_forward,
+          z,
+          hit_loc.polygon
+        )
+      end
+      
+      if Game.ticks - hit.tick > DMG_DELAY then
+        for i = 1, label_len do
+          hit.label[i]:delete()
+        end
+        table.remove(hit_labels, idx)
       end
     end
   end
-end
-
-function Triggers.postidle()
-  
 end
 
 function Triggers.monster_damaged(monster, aggressor_monster, damage_type, damage_amount, projectile)
