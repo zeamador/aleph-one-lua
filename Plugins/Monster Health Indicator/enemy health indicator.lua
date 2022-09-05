@@ -26,74 +26,96 @@ hit_labels = {}
 
 function Triggers.init()
 	Game.restore_passed()
-  table.setn(hit_labels, 0)
 end
 
 function dist(a, b)
-  return math.sqrt( (a.x-b.x)^2 + (a.y-b.y)^2 )
+  local x, y = a.x-b.x, a.y-b.y
+  return math.sqrt( x*x + y*y )
+end
+
+function create_or_update_life_label(m)
+  local theta = math.pi - angle_between_points(
+    {x = m.x, y = m.y},
+    {x = Players[0].x, y = Players[0].y}
+  )
+  local x_offset = DIGIT_SPACE * math.sin(theta)
+  local x_forward = DIGIT_FORWARD * math.sin(theta - math.pi/2)
+  local y_offset = DIGIT_SPACE * math.cos(theta)
+  local y_forward = DIGIT_FORWARD * math.cos(theta - math.pi/2)
+  
+  if m._label == nil then
+    -- initialize monster's label variables
+    m._label = {}
+    m._lifelabel = 0
+    m._labellen = 0
+    m._maxlife = 0
+  end
+  
+  if m.life > m._maxlife then
+    m._maxlife = m.life
+  end
+  
+  local t = MonsterTypes[m.type.mnemonic]
+  if m._lifelabel ~= m.life then
+    -- label needs updating
+    -- delete old ephemera
+    for i = 1, m._labellen do
+      m._label[i]:delete()
+    end
+    
+    local seq_base = SEQ_IDX
+    if t.berserker and m.life < m._maxlife / 4 then
+      seq_base = RED_SEQ_IDX
+    end
+    
+    -- create new ephemera
+    m._lifelabel = m.life
+    local life_str = string.format("%d", m.life)
+    m._labellen = #life_str
+    for i = 1, m._labellen do
+      local seq = seq_base + tonumber(life_str:sub(i, i))
+      m._label[i] = Ephemera.new(0, 0, 0, 0, COLLECTION, seq, m.facing)
+    end
+  end
+  
+  -- relocate label
+  local h = t.height
+  local z = m.z + (h * (m.life / m._maxlife)) + OFFSET
+  if z > m.polygon.ceiling.z - CEILING_BUFFER then
+    z = m.polygon.ceiling.z - CEILING_BUFFER
+  end
+  for i = 1, m._labellen do
+    m._label[i]:position(
+      m.x + (i-1-m._labellen/2)*x_offset + x_forward,
+      m.y + (i-1-m._labellen/2)*y_offset + y_forward,
+      z,
+      m.polygon
+    )
+    m._label[i].facing = m.facing
+  end
+end
+
+function Triggers.monster_killed(m, _, _)
+  if m._label ~= nil then
+    for i = 1, m._labellen do
+      m._label[i]:delete()
+    end
+    m._labellen = 0
+  end
 end
 
 function Triggers.idle()
   for m in Monsters() do
     if not m.player and m.life > 0 then
       if m.life > 0 then
-        --local distance = dist(Players[0], m)
+        --local distance = dist(
+        --  {x = Players[0].x, y = Players[0].y},
+        --  {x = m.x, y = m.y}
+        --)
+        --Players[0]:print(distance)
         --if distance < DISTANCE_THRESHOLD
-        --  
+          create_or_update_life_label(m)
         --end
-        
-        local theta = math.pi - angle_between_points(
-          {x = m.x, y = m.y},
-          {x = Players[0].x, y = Players[0].y}
-        )
-        local x_offset = DIGIT_SPACE * math.sin(theta)
-        local x_forward = DIGIT_FORWARD * math.sin(theta - math.pi/2)
-        local y_offset = DIGIT_SPACE * math.cos(theta)
-        local y_forward = DIGIT_FORWARD * math.cos(theta - math.pi/2)
-        
-        if m._label == nil then
-          -- initialize monster's label variables
-          m._label = {}
-          m._lifelabel = 0
-          m._labellen = 0
-        end
-        
-        if m._lifelabel ~= m.life then
-          -- label needs updating
-          
-          -- delete old ephemera
-          for i = 1, m._labellen do
-            m._label[i]:delete()
-          end
-          
-          -- create new ephemera
-          m._lifelabel = m.life
-          local life_str = string.format("%d", m.life)
-          m._labellen = #life_str
-          for i = 1, m._labellen do
-            local seq = SEQ_IDX + tonumber(life_str:sub(i, i))
-            m._label[i] = Ephemera.new(0, 0, 0, 0, COLLECTION, seq, m.facing)
-          end
-        end
-
-
-        if m._label ~= nil then
-          -- relocate label
-          local h = MonsterTypes[m.type.mnemonic].height
-          local z = m.z + h + OFFSET
-          if z > m.polygon.ceiling.z - CEILING_BUFFER then
-            z = m.polygon.ceiling.z - CEILING_BUFFER
-          end
-          for i = 1, m._labellen do
-            m._label[i]:position(
-              m.x + (i-1-m._labellen/2)*x_offset + x_forward,
-              m.y + (i-1-m._labellen/2)*y_offset + y_forward,
-              z,
-              m.polygon
-            )
-            m._label[i].facing = m.facing
-          end
-        end
       else -- m.life < 0
         if m._label ~= nil then
           for i = 1, m._labellen do
