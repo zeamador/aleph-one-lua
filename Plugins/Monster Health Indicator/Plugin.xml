@@ -1,0 +1,3 @@
+<plugin name="Monster Health Indicator" version="0.1" description="Displays monster health above monsters" solo_lua="enemy health indicator.lua">
+  <shapes_patch file="CheaterShapes Patch.ShPa"/>
+</plugin>
